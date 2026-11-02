@@ -1,0 +1,606 @@
+{
+  "info": {
+    "name": "E-commerce API Smoke - Toolshop",
+    "description": "API smoke and validation suite for the e-commerce REST API at api.practicesoftwaretesting.com. Covers catalog reads, JWT login, cart creation and item management, invoice (order) creation, plus negative cases. Run with the 'Ecommerce-API-Local' environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Catalog",
+      "item": [
+        {
+          "name": "GET products (paginated list)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products?page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response time is under 2000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Response is a paginated payload', function () {",
+                  "    pm.expect(body).to.have.all.keys('current_page', 'data', 'from', 'last_page', 'per_page', 'to', 'total');",
+                  "    pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Every product exposes id, name, price and in_stock', function () {",
+                  "    body.data.forEach(function (product) {",
+                  "        pm.expect(product).to.have.property('id').that.is.a('string').and.is.not.empty;",
+                  "        pm.expect(product).to.have.property('name').that.is.a('string');",
+                  "        pm.expect(product).to.have.property('price').that.is.a('number');",
+                  "        pm.expect(product).to.have.property('in_stock');",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('productId', body.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET product by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const product = pm.response.json();",
+                  "pm.test('Returned product matches the requested id', function () {",
+                  "    pm.expect(product.id).to.eql(pm.collectionVariables.get('productId'));",
+                  "});",
+                  "",
+                  "pm.test('Product has a non-empty name and a positive price', function () {",
+                  "    pm.expect(product.name).to.be.a('string').and.is.not.empty;",
+                  "    pm.expect(product.price).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET products search 'pliers'",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products?search=pliers",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "search", "value": "pliers" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Search returns at least one match for the term', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET postcode lookup (address for checkout)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postcode-lookup?country=RS&postcode=11000&house_number=143",
+              "host": ["{{baseUrl}}"],
+              "path": ["postcode-lookup"],
+              "query": [
+                { "key": "country", "value": "RS" },
+                { "key": "postcode", "value": "11000" },
+                { "key": "house_number", "value": "143" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const address = pm.response.json();",
+                  "pm.test('Lookup returns street, city and state', function () {",
+                  "    pm.expect(address.street).to.be.a('string').and.is.not.empty;",
+                  "    pm.expect(address.city).to.be.a('string').and.is.not.empty;",
+                  "    pm.expect(address.state).to.be.a('string').and.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('billingStreet', address.street + ' ' + address.house_number);",
+                  "pm.collectionVariables.set('billingCity', address.city);",
+                  "pm.collectionVariables.set('billingState', address.state);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Authentication",
+      "item": [
+        {
+          "name": "POST login (valid credentials)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Response contains a bearer access token', function () {",
+                  "    pm.expect(body).to.have.property('access_token').that.is.a('string').and.is.not.empty;",
+                  "    pm.expect(body).to.have.property('token_type').that.eql('bearer');",
+                  "});",
+                  "",
+                  "pm.test('Token expires in the future', function () {",
+                  "    pm.expect(body).to.have.property('expires_in');",
+                  "    pm.expect(body.expires_in).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('accessToken', body.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET current user profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const profile = pm.response.json();",
+                  "pm.test('Profile belongs to the authenticated user', function () {",
+                  "    pm.expect(profile.email).to.eql(pm.environment.get('email'));",
+                  "    pm.expect(profile).to.have.property('id').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Cart",
+      "item": [
+        {
+          "name": "POST create cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/carts",
+              "host": ["{{baseUrl}}"],
+              "path": ["carts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const cart = pm.response.json();",
+                  "pm.test('New cart returns an id', function () {",
+                  "    pm.expect(cart).to.have.property('id').that.is.a('string').and.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('cartId', cart.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST add product to cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"{{productId}}\",\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carts/{{cartId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["carts", "{{cartId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('API confirms the item was added or updated', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.result).to.eql('item added or updated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET cart contents",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/carts/{{cartId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["carts", "{{cartId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const cart = pm.response.json();",
+                  "pm.test('Cart contains exactly one line item', function () {",
+                  "    pm.expect(cart.cart_items).to.be.an('array').with.lengthOf(1);",
+                  "});",
+                  "",
+                  "pm.test('Line item keeps the requested product and quantity', function () {",
+                  "    const item = cart.cart_items[0];",
+                  "    pm.expect(item.product_id).to.eql(pm.collectionVariables.get('productId'));",
+                  "    pm.expect(item.quantity).to.eql(2);",
+                  "    pm.expect(item.product).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Checkout (invoice)",
+      "item": [
+        {
+          "name": "POST create invoice from cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billing_street\": \"{{billingStreet}}\",\n  \"billing_city\": \"{{billingCity}}\",\n  \"billing_state\": \"{{billingState}}\",\n  \"billing_country\": \"RS\",\n  \"billing_postal_code\": \"11000\",\n  \"payment_method\": \"cash-on-delivery\",\n  \"cart_id\": \"{{cartId}}\",\n  \"payment_details\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoices"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const invoice = pm.response.json();",
+                  "pm.test('Invoice number follows the INV-YYYYNNNNNN format', function () {",
+                  "    pm.expect(invoice.invoice_number).to.match(/^INV-\\d+$/);",
+                  "});",
+                  "",
+                  "pm.test('Invoice total is a positive number', function () {",
+                  "    pm.expect(invoice.total).to.be.above(0);",
+                  "    pm.expect(invoice.subtotal).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('Invoice belongs to the logged in user', function () {",
+                  "    pm.expect(invoice.user_id).to.be.a('string').and.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('invoiceNumber', invoice.invoice_number);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET invoice list contains the new invoice",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoices?page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["invoices"],
+              "query": [
+                { "key": "page", "value": "1" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Invoice list is paginated', function () {",
+                  "    pm.expect(body.data).to.be.an('array');",
+                  "    pm.expect(body).to.have.property('total');",
+                  "});",
+                  "",
+                  "pm.test('Newly created invoice appears in the list', function () {",
+                  "    const numbers = body.data.map(function (invoice) { return invoice.invoice_number; });",
+                  "    pm.expect(numbers).to.include(pm.collectionVariables.get('invoiceNumber'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Negative cases",
+      "item": [
+        {
+          "name": "GET profile without token returns 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('No user data is leaked in the body', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.not.have.property('email');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST login with wrong password returns 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"definitely_the_wrong_password\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Response does not return an access token', function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property('access_token');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET unknown product returns 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/00000000000000000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "00000000000000000000000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET cart with an invalid id returns 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/carts/00000000000000000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["carts", "00000000000000000000000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

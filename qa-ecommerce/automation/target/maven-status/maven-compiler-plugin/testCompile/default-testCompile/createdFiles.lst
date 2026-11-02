@@ -1,0 +1,6 @@
+tests\NavigationTest.class
+tests\BaseTest.class
+tests\CartTest.class
+tests\CheckoutTest.class
+tests\LoginTest.class
+tests\InventoryTest.class
